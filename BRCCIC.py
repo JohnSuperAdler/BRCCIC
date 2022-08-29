@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-##### Module import
-
 import os
 import glob
 import sys
@@ -12,23 +9,24 @@ import h5py
 import datetime
 import argparse
 
+def parse_args():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('input',  type=str, help='Path of input image file or folder.')
+    arg_parser.add_argument('format', type=str, help='Output file format.')
+    arg_parser.add_argument('-o', '--output', type=str, default='./', help='Path of output folder, default same as this script.')
+    parsed = arg_parser.parse_args()
+    return parsed.input, parsed.format, parsed.output
 
-##### Argument parameters
+def adjust_input_path(input_path):
+    if os.path.exists(input_path):
+        if os.path.isfile(input_path):
+            return [input_path]
+        elif os.path.isdir(input_path):
+            return glob.glob(os.path.join(input_path, '*'))
+    else:
+        sys.exit(f'Error: False input path "{input_path}"')
 
-### Arguement parse
-arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('input',  type=str, help='Path of input image file or folder.')
-arg_parser.add_argument('format', type=str, help='Output file format.')
-arg_parser.add_argument('-o', '--output', type=str, default='./', help='Path of output folder, default same as this script.')
-### Arguement data
-input_path    = arg_parser.parse_args().input
-convert_to    = arg_parser.parse_args().format
-output_folder = arg_parser.parse_args().output
-
-
-##### Common function
-
-def extension_filter(path_list, target_ext_list):
+def sort_paths_by_ext(path_list, target_ext_list):
     #filtered_path = []
     ext_di = dict(zip(target_ext_list, [[] for x in target_ext_list]))
     for i in range(len(path_list)):
@@ -39,15 +37,38 @@ def extension_filter(path_list, target_ext_list):
             ext_di[trimmed_ext].append(path_list[i])
     return ext_di
 
-def time_tag(input_dt, type=1):
-    if type == 2:
-        tag = input_dt.strftime('%Y/%m/%d %H:%M:%S')
+def convert_datetime_to_str(input_dt, strtype=1):
+    if strtype == 2:
+        time_tag = input_dt.strftime('%Y/%m/%d %H:%M:%S')
     else:
-        tag = input_dt.strftime('%y%m%d_%H%M')
-    return tag
+        time_tag = input_dt.strftime('%y%m%d_%H%M%S')
+    return time_tag
 
+def print_work_info():
+    print(f'[+] Path of input: "{input_path}"')
+    print(f'[+] Output folder: "{output_folder}"')
+    print( '[+] Detected image file(s):')
+    for t in input_file_extension:
+        if len(img_path_di[t]) != 0:
+            print(f'    [-] {len(img_path_di[t])} {t} file(s)')
+    print(f'[+] Convert to: {convert_to} ')
 
-##### Class BRCCIC (BRC Common Image Converter)
+def conversion(img_path_di, convert_to, output_folder):
+    print('[+] Start conversion...')
+    for key in img_path_di.keys():
+        path_li = img_path_di[key]
+        if len(path_li) == 0:
+            continue
+        print(f'    [+] {len(path_li)} {key} file(s)')
+        disp_period = 10 ** (len(str(len(path_li)))-2) if (len(str(len(path_li)))-2) > 0 else 1
+        for i in range(len(path_li)):
+            path_file = path_li[i]
+            file = BRCCIC(path_file, convert_to)
+            file.extract()
+            file.convert(output_folder)
+            if (i+1) % disp_period == 0:
+                print(f'        [-] {convert_datetime_to_str(datetime.datetime.now())} | {i+1} file(s) done.')
+        print(f'        [-] {convert_datetime_to_str(datetime.datetime.now())} | all {i+1} {key} file converted.')
 
 class BRCCIC:
     
@@ -181,53 +202,21 @@ class BRCCIC:
         else:
             sys.exit(f'Error: False output extension "{self.ext}"')
 
+if __name__=='__main__':
+    input_file_extension = ['npy', 'ims', 'am']
+    input_path, convert_to, output_folder = parse_args()
+    input_path = os.path.abspath(input_path)
+    output_folder = os.path.abspath(output_folder)
+    input_path_li = adjust_input_path(input_path)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    img_path_di = sort_paths_by_ext(input_path_li, input_file_extension)
 
-##### Input file path pre-process
-
-### Supportted extension
-input_file_extension = ['npy', 'ims', 'am']
-### Absolute path
-input_path    = os.path.abspath(input_path)
-output_folder = os.path.abspath(output_folder)
-### File/folder judge and some extras
-if os.path.exists(input_path):
-    if os.path.isfile(input_path):
-        file_path_li          = [input_path]
-    elif os.path.isdir(input_path):
-        file_path_li          = glob.glob(os.path.join(input_path, '*'))
-else:
-    sys.exit(f'Error: False input path "{input_path}"')
-### Generate output folder if no exists
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-### Filtering none-support files
-img_path_di = extension_filter(file_path_li, input_file_extension)
-### Info print
-print(f'[+] Path of input: "{input_path}"')
-print(f'[+] Output folder: "{output_folder}"')
-print( '[+] Detected image file(s):')
-for t in input_file_extension:
-    if len(img_path_di[t]) != 0:
-        print(f'    [-] {len(img_path_di[t])} {t} file(s)')
-print(f'[+] Convert to: {convert_to} ')
+    print_work_info()
+    conversion(img_path_di, convert_to, output_folder)
+    
+    print('[+] Conversion finished')
 
 
-##### Main flow: Load, extract, and convert
 
-print('[+] Start conversion...')
-for key in img_path_di.keys():
-    path_li = img_path_di[key]
-    if len(path_li) == 0:
-        continue
-    print(f'    [+] {len(path_li)} {key} file(s)')
-    disp_period = 10 ** (len(str(len(path_li)))-2) if (len(str(len(path_li)))-2) > 0 else 1
-    for i in range(len(path_li)):
-        path_file = path_li[i]
-        file = BRCCIC(path_file, convert_to)
-        file.extract()
-        file.convert(output_folder)
-        if (i+1) % disp_period == 0:
-            print(f'        [-] {time_tag(datetime.datetime.now())} | {i+1} file(s) done.')
-    print(f'        [-] {time_tag(datetime.datetime.now())} | all {i+1} {key} file converted.')
 
-print('[+] Conversion finished')
