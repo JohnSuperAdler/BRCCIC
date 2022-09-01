@@ -65,7 +65,7 @@ def conversion(img_path_di, convert_to, output_folder):
             path_file = path_li[i]
             file = BRCCIC(path_file, convert_to)
             file.extract()
-            file.convert(output_folder)
+            file.convert(output_folder, file.output_fn)
             if (i+1) % disp_period == 0:
                 print(f'        [-] {convert_datetime_to_str(datetime.datetime.now())} | {i+1} file(s) done.')
         print(f'        [-] {convert_datetime_to_str(datetime.datetime.now())} | all {i+1} {key} file converted.')
@@ -189,8 +189,10 @@ class BRCCIC:
         self.dtype = str(self.img_ar.dtype)
         #return self.img_ar, self.metadata_di
     
-    def convert(self, path_output_folder):
-        self.path_output = os.path.join(path_output_folder, self.output_fn)
+    def convert(self, path_output_folder, output_fn=None):
+        if not output_fn:
+            output_fn = self.output_fn
+        self.path_output = os.path.join(path_output_folder, output_fn)
         duplicate = 0
         while os.path.exists(self.path_output):
             duplicate += 1
