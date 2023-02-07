@@ -1,22 +1,11 @@
 # BRCCIC
-A easy python image conversion script which helps you convert 3D image files such as Avizo `*.am` file, numpy `*.npy` array file and Imaris `*.ims` file to *.am and *.npy file format. Bounding box information will also be kept during conversion excluding *.npy format.
+A easy python image conversion script which helps you convert 3D image files such as Avizo `*.am` files, numpy `*.npy` array files, Imaris `*.ims` files and `*.tiff` files to `*.am` and `*.npy` file format. Bounding box information will also be kept during conversion excluding *.npy format.
 
 BRCCIC stands for Brain Reseach Center[^1] Common Image Converter.
 
 ![Conversion format](img_00.png)
 
 ## How to use
-
-### Jupyter Notebook
-
-In BRCCIC.ipynb, input parameters in to the parameter cell and run.
-```
-input_path = ''      # Input path can be a file or a folder
-convert_to = ''      # Output file format. Now support 'npy' and 'am'
-output_folder = ''   # File output destination
-```
-
-### Command line input *.py
 
 Run BRCCIC.py in command line.
 ```
