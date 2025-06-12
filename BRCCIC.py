@@ -6,7 +6,7 @@ import glob
 import sys
 import numpy as np
 import h5py
-import tifffile
+from tifffile import imread, imwrite
 import datetime
 import argparse
 
@@ -14,7 +14,7 @@ def parse_args():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('input',  type=str, help='Path of input image file or folder.')
     arg_parser.add_argument('format', type=str, help='Output file format.')
-    arg_parser.add_argument('-o', '--output', type=str, default='./', help='Path of output folder, generate if not exist. Default same as this script.')
+    arg_parser.add_argument('-o', '--output', type=str, default='./', help='Path of output folder, default same as this script.')
     parsed = arg_parser.parse_args()
     return parsed.input, parsed.format, parsed.output
 
@@ -28,11 +28,13 @@ def adjust_input_path(input_path):
         sys.exit(f'Error: False input path "{input_path}"')
 
 def sort_paths_by_ext(path_list, target_ext_list):
+    #filtered_path = []
     ext_di = dict(zip(target_ext_list, [[] for x in target_ext_list]))
     for i in range(len(path_list)):
         name, ext = os.path.splitext(path_list[i])
         trimmed_ext = ext.strip('.').lower()
         if trimmed_ext in target_ext_list:
+            #filtered_path.append(path_list[i])
             ext_di[trimmed_ext].append(path_list[i])
     return ext_di
 
@@ -148,10 +150,10 @@ class BRCCIC:
         except ValueError:
             img_ar = np.array(list(map(float, temp_img_li))).reshape((metadata_di['lattice_z'], metadata_di['lattice_y'], metadata_di['lattice_x']))
         return img_ar, metadata_di
-
+    
     def tiff_to_arr(self, path_tiff):
         ### Read file
-        img_ar = tifffile.imread(path_tiff)
+        img_ar = imread(path_tiff)
         ### Generate dummy metadata
         metadata_di = {}
         metadata_di['bbox_x_max'] = np.shape(img_ar)[2] - 1
@@ -164,7 +166,7 @@ class BRCCIC:
         metadata_di['lattice_y'] = np.shape(img_ar)[1]
         metadata_di['lattice_z'] = np.shape(img_ar)[0]
         return img_ar, metadata_di
-    
+
     def arr_to_npy(self, path_output, dtype):
         np.save(path_output, self.img_ar.astype(dtype))
         
@@ -192,6 +194,9 @@ class BRCCIC:
             am_txt.write(output_am)
             am_txt.close()
         
+    def arr_to_tiff(self, path_output):
+        imwrite(path_output, self.img_ar, photometric='minisblack')
+
     def extract(self):
         if self.input_ext == 'ims':
             self.img_ar, self.metadata_di = self.ims_to_arr(self.path)
@@ -199,7 +204,7 @@ class BRCCIC:
             self.img_ar, self.metadata_di = self.npy_to_arr(self.path)
         elif self.input_ext == 'am':
             self.img_ar, self.metadata_di = self.am_to_arr(self.path)
-        elif self.input_ext == 'tif' or self.input_ext == 'tiff':
+        elif self.input_ext == 'tiff' or self.input_ext == 'tif':
             self.img_ar, self.metadata_di = self.tiff_to_arr(self.path)
         else:
             sys.exit(f'Error: False input extension "{self.ext}"')
@@ -218,11 +223,13 @@ class BRCCIC:
             self.arr_to_npy(self.path_output, dtype=dtype)
         elif self.output_ext == 'am':
             self.arr_to_am(self.path_output)
+        elif self.output_ext == 'tiff' or self.output_ext == 'tif':
+            self.arr_to_tiff(self.path_output)
         else:
             sys.exit(f'Error: False output extension "{self.ext}"')
 
 if __name__=='__main__':
-    input_file_extension = ['npy', 'ims', 'am', 'tiff', 'tif']
+    input_file_extension = ['npy', 'ims', 'am']
     input_path, convert_to, output_folder = parse_args()
     input_path = os.path.abspath(input_path)
     output_folder = os.path.abspath(output_folder)
@@ -235,7 +242,3 @@ if __name__=='__main__':
     conversion(img_path_di, convert_to, output_folder)
     
     print('[+] Conversion finished')
-
-
-
-
